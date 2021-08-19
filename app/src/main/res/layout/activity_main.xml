@@ -61,7 +61,6 @@
         <EditText
             android:layout_width="match_parent"
             android:layout_height="300px"
-            android:inputType="text"
             android:hint="내용을 입력해 주세요"
             android:gravity="top"
             />
