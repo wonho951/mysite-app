@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
@@ -12,7 +13,15 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
+import com.google.gson.Gson;
 import com.javaex.vo.GuestbookVo;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -64,20 +73,23 @@ public class MainActivity extends AppCompatActivity {
                 GuestbookVo guestbookVo = new GuestbookVo(name, password, content);
                 Log.d("javaStudy", "vo = " + guestbookVo.toString());
 
+                //글쓰기로 출장가셈
+                WriteAsyncTask writeAsyncTask = new WriteAsyncTask();
+                //쓰레드 개념이기 때문에 메소드 직접 시키면 안되니까 익스뀨뜨 시킴
+                writeAsyncTask.execute(guestbookVo);
+
+
+                /*
                 //2. 서버에 전송하고
                 Log.d("javaStudy", "서버전송");
 
                 //3. 리스트 엑티비티로 전환
                 Intent intent = new Intent(MainActivity.this, ListActivity.class);
-                startActivity(intent);
+                startActivity(intent);*/
 
 
             }
         });
-
-
-
-
 
     }
 
@@ -101,4 +113,95 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
+
+
+    //2021.08.20
+    //이너클래스(글쓰기용)
+    public class WriteAsyncTask extends AsyncTask<GuestbookVo, Integer, String>{
+        //제일처음
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        //두번째(요청보내는거)
+        @Override
+        protected String doInBackground(GuestbookVo... guestbookVos) {
+            Log.d("javaStudy", "doInBackground()");
+            Log.d("javaStudy", "Vo = " + guestbookVos[0].toString());
+
+            //vo-->json
+            Gson gson = new Gson();
+            String json = gson.toJson(guestbookVos[0]);
+            Log.d("javaStudy", "json -->" + json);
+
+            //데이터 전송(json --> body)
+                //1. 접속정보 먼저 씀
+                //2. outputStream으로 보냄(json --> body)
+            try {
+                //1. 접속정보 먼저 씀
+                URL url = new URL("http://221.146.110.204:8088/mysite5/api/guestbook/write2");  //url 생성
+
+                HttpURLConnection conn = (HttpURLConnection)url.openConnection();  //url 연결
+                conn.setConnectTimeout(10000); // 10초 동안 기다린 후 응답이 없으면 종료
+                conn.setRequestMethod("POST"); // 요청방식 POST
+                conn.setRequestProperty("Content-Type", "application/json"); //요청시 데이터 형식 json
+                conn.setRequestProperty("Accept", "application/json"); //응답시 데이터 형식 json
+                conn.setDoOutput(true); //OutputStream으로 POST 데이터를 넘겨주겠다는 옵션.
+                conn.setDoInput(true); //InputStream으로 서버로 부터 응답을 받겠다는 옵션.
+
+                //2. outputStream으로 보냄(json --> body)
+                OutputStream os = conn.getOutputStream();
+                //데이터가 101010이런식으로 오니까 번역기 설치
+                OutputStreamWriter osw = new OutputStreamWriter(os);
+                //이게 빨대였나(속도?)-> 일정량이 차야 감
+                BufferedWriter bw = new BufferedWriter(osw);
+
+                bw.write(json);
+
+                //데이터가 다 안차도 보냄
+                bw.flush();
+
+                //데이터를 받기전이기 때문에 이걸로 요청하면 안됨
+                int resCode = conn.getResponseCode(); // 응답코드 200이 정상
+                Log.d("javaStudy", "resCode = " + resCode);
+
+
+                if(resCode == HttpURLConnection.HTTP_OK){ //정상이면
+
+                    //리스트 액티비티로 전환
+                    Intent intent = new Intent(MainActivity.this, ListActivity.class);
+                    startActivity(intent);
+                    //데이타 형식은 json으로 한다.
+
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+
+
+            return null;
+        }
+
+        //진행상태
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+            super.onProgressUpdate(values);
+        }
+
+        //doInBackground의 최종값을 받기 위해 사용
+        @Override
+        protected void onPostExecute(String s) {
+            super.onPostExecute(s);
+        }
+    }
+
+
+
+
+
+
+
+
 }
